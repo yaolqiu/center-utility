@@ -43,15 +43,5 @@
     "require-dev": {
         "easyswoole/phpunit": "^1.1"
     },
-    "minimum-stability": "dev",
-    "repositories": {
-        "lyqiu/es-notify": {
-            "type": "path",
-            "url": "../es-notify"
-        }
-    },
-    "lyqiu/es-notify": {
-        "type": "path",
-        "url": "../composer/lyqiu/es-notify"
-    }
+    "minimum-stability": "dev"
 }
