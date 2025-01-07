@@ -93,7 +93,6 @@ if ( ! function_exists('model')) {
         $tableName = $gameid != '' ? parse_name($name, 0, false) . "_$gameid" : '';
 
         $className = find_model($space . $name);
-
         /** @var AbstractModel $model */
         $model = new $className($data, $tableName, $gameid);
 
@@ -150,6 +149,13 @@ if ( ! function_exists('model_carbon')) {
     function model_carbon(string $name = '', array $data = [], $inject = false)
     {
         return model('Carbon\\' . ucfirst($name), $data, $inject);
+    }
+}
+
+if ( ! function_exists('model_outlet')) {
+    function model_outlet(string $name = '', array $data = [], $inject = false)
+    {
+        return model('Outlet\\' . ucfirst($name), $data, $inject);
     }
 }
 
@@ -414,7 +420,7 @@ if ( ! function_exists('ip')) {
     {
         // Request继承 \EasySwoole\Http\Message\Message 皆可
         if ( ! $Request instanceof \EasySwoole\Http\Request) {
-            $Request = \Yizuan\CenterUtility\Common\Classes\CtxRequest::getInstance()->request;
+            $Request = \Lyqiu\CenterUtility\Common\Classes\CtxRequest::getInstance()->request;
             if (empty($Request)) {
                 return false;
             }

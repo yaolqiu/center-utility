@@ -47,20 +47,20 @@ trait AuthTrait
      * @var string
      */
     protected $sub = '';
-    protected $mid = 0;
     protected $uid = 0;
+    protected $enterpriseId = 0;
+    protected $enterpriseExits = true;
 
     protected function onRequest(?string $action): ?bool
     {
         $this->setAuthTraitProptected();
 
         $return = parent::onRequest($action);
+       
         if ( ! $return) {
             return false;
         }
-
         $this->isExport = $action === 'export';
-
         return $this->checkAuthorization();
     }
 
@@ -68,9 +68,15 @@ trait AuthTrait
     protected function _getEntityData($id = 0)
     {
         /** @var AbstractModel $Admin */
-        $Admin = model_admin('account');
+        $Admin = model(APP_MODULE . '\\Account');
         // 当前用户信息
-        return $Admin->where('id', $id)->get();
+        $where = [
+            'id'=> $id
+        ];
+        if($this->enterpriseId) {
+            $where['enterprise_id'] = $this->enterpriseId;
+        }
+        return $Admin->where($where)->get();
     }
 
     protected function _verifyToken($authorization = '')
@@ -137,7 +143,6 @@ trait AuthTrait
         $HttpClient->setHeader($tokenKey, $this->getAuthorization(), false);
         $resp = $HttpClient->setQuery($query)->get();
         $result = $resp->json(true);
-
         // 失败 || 没权限
         if ($resp->getStatusCode() !== 200 || ! isset($result['code']) || $result['code'] !== 200) {
             $this->error($result['code'] ?? Code::CODE_FORBIDDEN, $result['msg']);
@@ -145,35 +150,32 @@ trait AuthTrait
         }
         
         $this->sub = $result['result']['sub'];
-        $this->mid = $result['result']['operinfo']['mid'];
         $this->uid = $result['result']['operinfo']['id'];
         $this->operinfo = $result['result']['operinfo'];
         CtxRequest::getInstance()->withOperinfo($this->operinfo);
 
         return true;
     }
-
+    
     // 账号管理系统，本站权限认证
     protected function checkAuthorization()
     {
         // 获取授权的 token
         $authorization = $this->getAuthorization();
-
         if ( ! $authorization) {
             $this->error(Code::CODE_UNAUTHORIZED, Dictionary::ADMIN_AUTHTRAIT_1);
             return false;
         }
-
         // jwt验证
         $jwt = $this->_verifyToken($authorization);
-
         $id = $jwt['data']['id'] ?? '';
         if ($jwt['status'] != 1 || empty($id)) {
             $this->error(Code::CODE_UNAUTHORIZED, Dictionary::ADMIN_AUTHTRAIT_2);
             return false;
         }
-
+      
         $this->sub = $jwt['data']['sub'];
+        $this->enterpriseId = $jwt['data']['enterprise_id'];
         if ( ! in_array($this->sub, config('SUB_SYSTEM') ?: [])) {
             $this->error(Code::ERROR_OTHER, Dictionary::CANT_FIND_USER);
             return false;
@@ -192,10 +194,9 @@ trait AuthTrait
             $this->error(Code::ERROR_OTHER, Dictionary::ADMIN_AUTHTRAIT_4);
             return false;
         }
-
+        
         // 关联的分组信息
         $this->operinfo = $this->_operinfo($data);
-        $this->mid = $this->operinfo['mid'];
         $this->uid =  $this->operinfo['id'];
 
         // 将管理员信息挂载到Request
@@ -207,12 +208,9 @@ trait AuthTrait
     protected function _operinfo($data)
     {
         $relation = $data->relation ? $data->relation->toArray() : [];
-        // 获取主体信息
-        $mainInfo = $data->mainInfo ? $data->mainInfo->toArray() : [];
-
+        
         $data = $data->toArray();
         $data['role'] = $relation;
-        $data['mainInfo'] = $mainInfo;
         return $data;
     }
 
@@ -233,23 +231,26 @@ trait AuthTrait
 
         // 获取 类下的 plublic 方法
         $publicMethods = $this->getAllowMethods('strtolower');
-
         $currentAction = strtolower($this->getActionName());
-
         if ( ! in_array($currentAction, $publicMethods)) {
             $this->error(Code::CODE_FORBIDDEN);
             return false;
         }
-
+       
         $currentClassName = strtolower($this->getStaticClassName());
-        $fullPath = "/$currentClassName/$currentAction";
+        $fullPath = '/' . APP_MODULE . "/$currentClassName/$currentAction";
 
+        // carbon 特有有的权限放通
+        if(isset($this->operinfo['role']['is_sys']) && $this->operinfo['role']['is_sys'] ==1) {
+            return true;
+        }
+        
         /** @var AbstractModel $Menu */
         $Menu = model_admin('Menu');
-
+        
         // 设置用户权限
         $userMenu = $this->getUserMenus();
-
+       
         if ( ! is_null($userMenu)) {
             if (empty($userMenu)) {
                 $this->error(Code::CODE_FORBIDDEN);
@@ -257,11 +258,9 @@ trait AuthTrait
             }
             $Menu->where('id', $userMenu, 'IN');
         }
-
         $priv = $Menu->where(['permission' => ['', '<>'], 'status' => 1])
             ->where("FIND_IN_SET('{$this->sub}', sub) > 0")
             ->column('permission');
-
         if (empty($priv)) {
             return true;
         }
@@ -279,7 +278,7 @@ trait AuthTrait
         // 无需认证操作
         if ($omitAction = array_map('strtolower', array_merge($selfOmitAction, $this->_authOmit))) {
             foreach ($omitAction as $omit) {
-                in_array($omit, $publicMethods) && $policy->addPath("/$currentClassName/$omit");
+                in_array($omit, $publicMethods) && $policy->addPath('/' . APP_MODULE . "/$currentClassName/$omit");
             }
         }
 
@@ -289,14 +288,13 @@ trait AuthTrait
             $alias = trim($aliasAction[$currentAction], '/');
             if (strpos($alias, '/') === false) {
                 if (in_array($alias, $publicMethods)) {
-                    $fullPath = "/$currentClassName/$alias";
+                    $fullPath =  '/' . APP_MODULE  . "/$currentClassName/$alias";
                 }
             } else {
                 // 支持引用跨菜单的已有权限
                 $fullPath = '/' . $alias;
             }
         }
-
         // 自定义认证操作
         $this->setPolicy($policy);
         $ok = $policy->check($fullPath) === PolicyNode::EFFECT_ALLOW;
@@ -334,7 +332,7 @@ trait AuthTrait
         }
     }
 
-    protected function __getModel(): AbstractModel
+    protected function __getModel($where = []): AbstractModel
     {
         $request = array_merge($this->get, $this->post);
 
@@ -348,11 +346,11 @@ trait AuthTrait
             throw new HttpParamException(lang(Dictionary::ADMIN_AUTHTRAIT_10));
         }
 
-        // 强制适配 > 1000 加 mid条件
-        if($this->mid > 1000) {
-            $this->Model->where('mid', $this->mid);
+        $where[$pk] = $request[$pk];
+        if($this->enterpriseId > 0 && $this->enterpriseExits) {
+            $where['enterprise_id'] = $this->enterpriseId;
         }
-        $model = $this->Model->where($pk, $request[$pk])->get();
+        $model = $this->Model->where($where)->get();
 
         if (empty($model)) {
             throw new HttpParamException(lang(Dictionary::ADMIN_AUTHTRAIT_11));
@@ -364,6 +362,10 @@ trait AuthTrait
     public function _add($return = false)
     {
         if ($this->isHttpPost()) {
+            if($this->enterpriseId > 0 && $this->enterpriseExits) {
+                $this->post['enterprise_id'] = $this->enterpriseId;
+            }
+            $this->__checkValidate($this->post);
             $result = $this->Model->data($this->post)->save();
             if ($return) {
                 return $result;
@@ -379,7 +381,6 @@ trait AuthTrait
 
         $model = $this->__getModel();
         $request = array_merge($this->get, $this->post);
-
         if ($this->isHttpPost()) {
 
             $where = null;
@@ -399,8 +400,9 @@ trait AuthTrait
                 throw new HttpParamException(lang(Dictionary::ADMIN_AUTHTRAIT_9));
             }
         }
-
-        return $return ? $model->toArray() : $this->success($model->toArray());
+        $data = $model->toArray();
+        unset($data['deltime']);
+        return $return ?$data : $this->success($data);
     }
 
     protected function __fields()
@@ -493,8 +495,8 @@ trait AuthTrait
             throw new HttpParamException(lang(Dictionary::PARAMS_ERROR));
         }
 
-        $page = $this->get[config('fetchSetting.pageField')] ?? 1;          // 当前页码
-        $limit = $this->get[config('fetchSetting.sizeField')] ?? 20;    // 每页多少条数据
+        $page = $this->page;          // 当前页码
+        $limit = $this->limit;    // 每页多少条数据
 
         $this->__with();
         $where = $this->__search();
@@ -505,16 +507,16 @@ trait AuthTrait
         if( !empty($deletTime) && !isset($where[$deletTime])) {
             $where[$deletTime] = [NULL, 'IS'];
         }
-
+      
         // 处理排序
         $this->__order();
         $fields = $this->__fields();
         $this->Model->scopeIndex();
         $this->Model->limit($limit * ($page - 1), $limit)->withTotalCount();
+
         $items = $this->Model->field($fields)->all($where);
         $result = $this->Model->lastQueryResult();
         $total = $result->getTotalCount();
-
         $data = $this->__after_index($items, $total);
         return $return ? $data : $this->success($data);
     }

@@ -8,9 +8,9 @@ trait LogSqlTrait
 	{
 		$filter = $this->filter();
 
-		$where = ['instime' => [[$filter['begintime'], $filter['endtime']], 'between']];
-		if (isset($this->get['admid'])) {
-			$where['admid'] = $this->get['admid'];
+        $where = ['instime' => [[date('Y-m-d H:i:s', $filter['begintime']), date('Y-m-d H:i:s', $filter['endtime'])], 'between']];
+        if (isset($this->get['admid'])) {
+			$where['aid'] = $this->get['admid'];
 		}
 
 		$content = $this->get['content'] ?? '';

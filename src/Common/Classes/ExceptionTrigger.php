@@ -53,7 +53,7 @@ class ExceptionTrigger implements TriggerInterface
         $eMsg['trigger'] = $trigger;
         if (\Swoole\Coroutine::getCid() >= 0) {
             $task = \EasySwoole\EasySwoole\Task\TaskManager::getInstance();
-            $task->async(new \Yizuan\CenterUtility\Task\Error($eMsg));
+            $task->async(new \Lyqiu\CenterUtility\Task\Error($eMsg));
         }
     }
 }

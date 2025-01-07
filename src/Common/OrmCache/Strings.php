@@ -244,7 +244,7 @@ trait Strings
                 $data = $this->cacheGet(explode(':', $data)[1]);
                 $this->bloom = $bloom;
             }
-            
+
             // 没有数据，从数据表获取
             if (is_null($data) || $data === false) {
                 $data = $this->_getByUnique($id);

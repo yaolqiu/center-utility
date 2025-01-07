@@ -167,6 +167,10 @@ trait BaseModelTrait
      */
     public function get($where  = null)
     {
+        if($where && !is_array($where)) {
+            $where = [];
+            $where[$this->getPk()] = $where;
+        }
         $deleteTime = $this->getDeleteTime();
         if($deleteTime && !isset($where[$deleteTime])) {
             $where[$deleteTime] = [NULL, 'IS'];
@@ -220,4 +224,12 @@ trait BaseModelTrait
         return $updateData ? $this->update($updateData, $where) : parent::destroy($where) ;
     }
 
+    public function softCount($where = null)
+    {
+        $deleteTime = $this->getDeleteTime();
+        if($deleteTime && !isset($where[$deleteTime])) {
+            $where[$deleteTime] = [NULL, 'IS'];
+        }
+        return parent::where($where)->count();
+    }
 }

@@ -132,7 +132,7 @@ trait BaseControllerTrait
         } elseif ($throwable instanceof WarnException) {
             $message = $throwable->getMessage();
             $task = \EasySwoole\EasySwoole\Task\TaskManager::getInstance();
-            $task->async(new \Yizuan\CenterUtility\Task\Error(
+            $task->async(new \Lyqiu\CenterUtility\Task\Error(
                     [
                         'message' => $message,
                         'file' => $throwable->getFile(),

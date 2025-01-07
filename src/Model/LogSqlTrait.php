@@ -4,6 +4,7 @@
 namespace Lyqiu\CenterUtility\Model;
 
 
+use App\Model\Admin\Account;
 use EasySwoole\Mysqli\QueryBuilder;
 use Lyqiu\CenterUtility\Common\Classes\CtxRequest;
 
@@ -25,7 +26,7 @@ trait LogSqlTrait
 			$query->fields(['id', 'username', 'realname', 'avatar', 'status']);
 			return $query;
 		};
-		return $this->hasOne(find_model('Account\Admin'), $callback, 'admid', 'id');
+		return $this->hasOne(Account::class, $callback, 'aid', 'id');
 	}
 
 	public function sqlWriteLog($sql = '')
