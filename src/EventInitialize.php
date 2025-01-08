@@ -154,7 +154,6 @@ class EventInitialize extends SplBean
     protected function registerMysqlPool()
     {
         $config = $this->mysqlConfig;
-        print_R($config);
         if ( ! is_array($config)) {
             return;
         }
@@ -175,7 +174,6 @@ class EventInitialize extends SplBean
     protected function registerRedisPool()
     {
         $config = $this->redisConfig;
-        print_r($config);
         if ( ! is_array($config)) {
             return;
         }
