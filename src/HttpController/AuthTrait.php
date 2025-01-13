@@ -312,7 +312,7 @@ trait AuthTrait
 
     protected function isSuper($rid = null)
     {
-        return is_super(is_null($rid) ? $this->operinfo['rid'] : $rid);
+        return $this->operinfo['role']['is_sys'] ? true : is_super(is_null($rid) ? $this->operinfo['rid'] : $rid);
     }
 
     protected function getUserMenus()
