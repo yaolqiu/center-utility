@@ -416,6 +416,7 @@ trait AuthTrait
         $this->__with();
         $model = $this->__getModel();
         $result = $this->__after_read($model);
+        unset($result['deltime'], $result['enterprise_id']);
         return $return ? $result : $this->success($result);
     }
 
