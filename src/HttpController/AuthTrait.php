@@ -394,6 +394,10 @@ trait AuthTrait
              * 所以需要getAffectedRows来判断是否更新成功
              * 只要SQL没错误就认为成功
              */
+
+            // 需要胡话检测数据
+            $this->__checkValidate($request);
+
             $upd = $model->update($request, $where);
             if ($upd === false) {
                 trace('edit update失败: ' . $model->lastQueryResult()->getLastError());
