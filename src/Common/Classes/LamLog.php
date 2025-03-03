@@ -32,14 +32,15 @@ class LamLog implements LoggerInterface
         $str = $this->_preAct($msg, $level, $category, 'log');
 
         // 立即写入
-        if ($category === self::CATE_IMMEDIATE || Coroutine::getCid() < 0) {
-            $this->save();
-        } // 协程defer时写入
-        else {
-            Coroutine::defer(function () {
-                $this->save();
-            });
-        }
+//        if ($category === self::CATE_IMMEDIATE || Coroutine::getCid() < 0) {
+//            $this->save();
+//        } // 协程defer时写入
+//        else {
+//            Coroutine::defer(function () {
+//                $this->save();
+//            });
+//        }
+        $this->save();
 
         return $str;
     }
