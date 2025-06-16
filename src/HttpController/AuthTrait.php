@@ -394,8 +394,11 @@ trait AuthTrait
              * 所以需要getAffectedRows来判断是否更新成功
              * 只要SQL没错误就认为成功
              */
+            if ($this->enterpriseId > 0 && $this->enterpriseExits) {
+                $request['enterprise_id'] = $this->enterpriseId;
+            }
 
-            // 需要胡话检测数据
+            // 需要的话检测数据
             $this->__checkValidate($request);
 
             $upd = $model->update($request, $where);
